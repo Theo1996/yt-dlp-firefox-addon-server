@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body {
+      width: 290px;
+      padding: 16px;
+      font-family: sans-serif;
+      background: #0f0f0f;
+      color: #fff;
+      margin: 0;
+    }
+    h3 { margin: 0 0 12px; font-size: 15px; color: #ff4444; }
+    #url-display {
+      font-size: 11px;
+      color: #aaa;
+      word-break: break-all;
+      margin-bottom: 14px;
+      background: #1e1e1e;
+      padding: 8px;
+      border-radius: 6px;
+    }
+    #status { font-size: 12px; min-height: 18px; margin-bottom: 10px; }
+    .ok    { color: #4caf50; }
+    .err   { color: #ff4444; }
+    .info  { color: #aaa; }
+
+    /* Progress bar */
+    #progress-wrap {
+      background: #1e1e1e;
+      border-radius: 4px;
+      height: 6px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      display: none;
+    }
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #ff0000;
+      transition: width 0.3s ease;
+      border-radius: 4px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    #dl-btn       { background: #ff0000; color: white; }
+    #dl-btn:hover { background: #cc0000; }
+    #dl-btn:disabled { background: #444; color: #888; cursor: default; }
+    #dl-audio-btn { background: #1e1e1e; color: #aaa; border: 1px solid #333; }
+    #dl-audio-btn:hover { background: #2a2a2a; }
+    #dl-audio-btn:disabled { opacity: 0.4; cursor: default; }
+    #not-yt { color: #888; font-size: 13px; text-align: center; padding: 10px 0; }
+  </style>
+</head>
+<body>
+  <h3>⬇ YT-DLP Downloader</h3>
+
+  <div id="content">
+    <div id="url-display">Loading...</div>
+    <div id="progress-wrap"><div id="progress-bar"></div></div>
+    <div id="status" class="info">Ready</div>
+    <button class="btn" id="dl-btn">⬇ Download Video</button>
+    <button class="btn" id="dl-audio-btn">🎵 Audio Only (MP3)</button>
+  </div>
+
+  <div id="not-yt" style="display:none">Not a YouTube video page.</div>
+  <script src="popup.js"></script>
+</body>
+</html>
