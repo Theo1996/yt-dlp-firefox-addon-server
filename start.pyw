@@ -1,7 +1,25 @@
-import subprocess
+import subprocess, os
 
-p = subprocess.Popen(
-    ['K:\\python\\Python38\\python.exe', 'C:\\Users\\f\\Documents\\server\\server.py'],
+# Kill anything already running on port 9876
+try:
+    result = subprocess.run(
+        ['netstat', '-ano'],
+        capture_output=True, text=True,
+        creationflags=subprocess.CREATE_NO_WINDOW
+    )
+    for line in result.stdout.splitlines():
+        if ':9876' in line and 'LISTENING' in line:
+            pid = line.strip().split()[-1]
+            subprocess.run(
+                ['taskkill', '/F', '/PID', pid],
+                creationflags=subprocess.CREATE_NO_WINDOW
+            )
+except Exception:
+    pass
+
+# Start the server
+subprocess.Popen(
+    [r'K:\python\Python38\python.exe', r'C:\Users\f\Documents\server\server.py'],
     creationflags=subprocess.CREATE_NO_WINDOW
 )
 #```

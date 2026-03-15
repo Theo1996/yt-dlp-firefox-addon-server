@@ -132,17 +132,6 @@ browser.browserAction.onClicked.addListener(async (tab) => {
   // onClicked only fires when popup is '' (i.e. not downloading)
   // so this is always a "start new download" action
 
-  if (!url.includes('youtube.com/watch')) {
-    setbadge(tabId, '?', '#888888');
-    setTooltip(tabId,
-      `YT-DLP Downloader\n` +
-      `─────────────────\n` +
-      `Not a YouTube video page.\n` +
-      `Navigate to a youtube.com/watch URL first`
-    );
-    return;
-  }
-
   // Reset any previous popup/state
   setPopup(tabId, '');
   ts.polling = false;

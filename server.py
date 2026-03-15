@@ -33,7 +33,6 @@ def run_download(tab_id, cmd):
 
     try:
         kwargs = {'creationflags': subprocess.CREATE_NO_WINDOW} if os.name == 'nt' else {}
-
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
@@ -56,10 +55,8 @@ def run_download(tab_id, cmd):
                 stdout_lines.append(line)
                 with downloads_lock:
                     downloads[tab_id]['output'].append(line)
-                    # Keep last 200 lines
                     if len(downloads[tab_id]['output']) > 200:
                         downloads[tab_id]['output'].pop(0)
-
                 if 'has already been downloaded' in line:
                     downloads[tab_id]['status'] = 'exists'
                     f = re.search(r'\[download\] (.+) has already been downloaded', line)
@@ -91,10 +88,10 @@ def run_download(tab_id, cmd):
             downloads[tab_id]['proc'] = None
             if downloads[tab_id]['status'] == 'exists':
                 pass
+            elif downloads[tab_id]['status'] == 'cancelled':
+                pass
             elif proc.returncode == 0:
                 downloads[tab_id]['status'] = 'done'
-            elif proc.returncode == -1 or proc.returncode is None:
-                downloads[tab_id]['status'] = 'cancelled'
             else:
                 error_text = '\n'.join(stderr_lines) or '\n'.join(stdout_lines)
                 downloads[tab_id]['status']     = 'error'
@@ -114,18 +111,14 @@ def run_download(tab_id, cmd):
 def download():
     url    = request.args.get('url', '')
     tab_id = request.args.get('tab_id', 'default')
-
-    if not url or 'youtube.com' not in url:
+    if not url:
         return 'Invalid URL', 400
-
     with downloads_lock:
         if tab_id in downloads and downloads[tab_id]['status'] == 'downloading':
             return 'Already downloading', 429
         downloads[tab_id] = make_state()
-
     out_tmpl = os.path.join(DESKTOP, '%(title)s.%(ext)s')
     cmd = ['yt-dlp', '-o', out_tmpl, '--no-colors', url]
-
     threading.Thread(target=run_download, args=(tab_id, cmd), daemon=True).start()
     return 'Download started!'
 
@@ -135,7 +128,16 @@ def cancel():
     with downloads_lock:
         s = downloads.get(tab_id)
         if s and s['proc']:
-            s['proc'].terminate()
+            try:
+                if os.name == 'nt':
+                    subprocess.run(
+                        ['taskkill', '/F', '/T', '/PID', str(s['proc'].pid)],
+                        creationflags=subprocess.CREATE_NO_WINDOW
+                    )
+                else:
+                    s['proc'].kill()
+            except Exception:
+                pass
             s['status'] = 'cancelled'
             s['proc']   = None
             return 'Cancelled'
@@ -159,7 +161,7 @@ def output():
     tab_id = request.args.get('tab_id', 'default')
     since  = int(request.args.get('since', 0))
     with downloads_lock:
-        s    = downloads.get(tab_id, make_state())
+        s     = downloads.get(tab_id, make_state())
         lines = s['output'][since:]
         total = len(s['output'])
     return jsonify({ 'lines': lines, 'total': total, 'status': s['status'] })
