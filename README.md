@@ -1,5 +1,5 @@
 # yt-dlp-firefox-addon-server
-server files for the FF addon to connect to and download videos
+server files and extension files for the FF addon to connect to and download videos with yt-dlp with one click from inside the browser
 **Prerequisites:**
 
 installed yt-dlp, and added to the PATH Envirnoment variable
