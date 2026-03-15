@@ -14,3 +14,5 @@ python3.8 with flask
 2 Create a basic task with task scheduler to start server.pyw on startup.
 
 3. download this addon : [toadd]
+
+the .zip is the "yt-dlp extension" folder
