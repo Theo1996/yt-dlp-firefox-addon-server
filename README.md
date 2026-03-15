@@ -3,9 +3,9 @@ server files and extension files for the FF addon to connect to and download vid
 **Prerequisites:**
 
 installed yt-dlp, and added to the PATH Envirnoment variable
+https://github.com/yt-dlp/yt-dlp
 
-
-python with flask
+python3.8 with flask
 
 **Set up:**
 
