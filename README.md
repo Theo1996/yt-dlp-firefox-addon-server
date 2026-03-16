@@ -15,14 +15,9 @@ https://github.com/yt-dlp/yt-dlp
 2 Create a basic task with task scheduler to start server.pyw on startup.
 
 3. download this addon : [toadd]
-4. in server.pyw change the directories to where YOUR "python.exe" is located
 
+5. start.pyw should detect your python location automatically
 
-**Start the server**
-      subprocess.Popen(
-          [r'K:\python\Python38\python.exe', r'C:\Users\f\Documents\server\server.py'],
-          creationflags=subprocess.CREATE_NO_WINDOW
-      )
    
 **Extra**
 The .zip is the "yt-dlp extension" folder
