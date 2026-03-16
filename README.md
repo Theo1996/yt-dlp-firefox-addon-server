@@ -18,7 +18,7 @@ https://github.com/yt-dlp/yt-dlp
 4. in server.pyw change the directories to where YOUR "python.exe" is located
 
 
-** Start the server**
+**Start the server**
       subprocess.Popen(
           [r'K:\python\Python38\python.exe', r'C:\Users\f\Documents\server\server.py'],
           creationflags=subprocess.CREATE_NO_WINDOW
