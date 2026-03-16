@@ -194,3 +194,43 @@ browser.runtime.onMessage.addListener((msg) => {
       .catch(() => {});
   }
 });
+
+// When user switches to a tab, check if it has an active download and resume polling
+browser.tabs.onActivated.addListener(async ({ tabId }) => {
+  try {
+    const res  = await fetch(`${HOST}:${PORT}/progress?tab_id=${tabId}`);
+    const data = await res.json();
+    const ts   = getTabState(tabId);
+
+    if (data.status === 'downloading' && !ts.polling) {
+      ts.polling = true;
+      setPopup(tabId, `popup.html?tab_id=${tabId}`);
+      poll(tabId);
+
+    } else if (data.status === 'done') {
+      ts.polling = false;
+      setbadge(tabId, 'OK', '#4caf50');
+      setPopup(tabId, '');
+
+    } else if (data.status === 'exists') {
+      ts.polling = false;
+      setbadge(tabId, 'HAS', '#ff9800');
+      setPopup(tabId, '');
+
+    } else if (data.status === 'cancelled') {
+      ts.polling = false;
+      setbadge(tabId, 'STOP', '#888888');
+      setPopup(tabId, '');
+
+    } else if (data.status === 'error') {
+      ts.polling = false;
+      setbadge(tabId, 'ERR', '#ff4444');
+      setPopup(tabId, `error.html?tab_id=${tabId}`);
+
+    } else if (data.status === 'idle') {
+      ts.polling = false;
+      setbadge(tabId, '', '#888888');
+      setPopup(tabId, '');
+    }
+  } catch {}
+});
