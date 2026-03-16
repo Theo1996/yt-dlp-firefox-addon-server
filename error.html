@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 440px;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      font-family: 'Consolas', 'Monaco', monospace;
+      padding: 16px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 14px;
+      border-bottom: 1px solid #222;
+      padding-bottom: 12px;
+    }
+    .header h3 { color: #ff4444; font-size: 15px; }
+    .label {
+      font-size: 10px;
+      color: #555;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .error-box {
+      background: #1a1a1a;
+      border: 1px solid #ff444433;
+      border-left: 3px solid #ff4444;
+      border-radius: 4px;
+      padding: 12px;
+      font-size: 11px;
+      line-height: 1.7;
+      color: #ff9999;
+      max-height: 260px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+      margin-bottom: 12px;
+    }
+    .error-box::-webkit-scrollbar { width: 5px; }
+    .error-box::-webkit-scrollbar-track { background: #111; }
+    .error-box::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+    .log-note { font-size: 11px; color: #555; margin-bottom: 14px; }
+    .log-note span { color: #888; }
+    #dismiss {
+      width: 100%;
+      padding: 9px;
+      background: #1e1e1e;
+      color: #aaa;
+      border: 1px solid #2a2a2a;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    #dismiss:hover { background: #252525; color: #fff; border-color: #444; }
+  </style>
+</head>
+<body>
+  <div class="header"><h3>⚠ Download Error</h3></div>
+  <div class="label">yt-dlp output</div>
+  <div id="error-box" class="error-box">Loading...</div>
+  <div class="log-note">Full log saved to: <span>Desktop/yt-dlp-error.log</span></div>
+  <button id="dismiss">Dismiss</button>
+  <script src="error.js"></script>
+</body>
+</html>

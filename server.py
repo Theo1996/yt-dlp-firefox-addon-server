@@ -3,7 +3,10 @@ import subprocess, threading, re, os
 
 app = Flask(__name__)
 
-DESKTOP = os.path.join(os.path.expanduser('~'), 'Desktop')
+# Mutable save directory
+config = {
+    'save_dir': os.path.join(os.path.expanduser('~'), 'Desktop')
+}
 
 downloads = {}
 downloads_lock = threading.Lock()
@@ -96,15 +99,17 @@ def run_download(tab_id, cmd):
                 error_text = '\n'.join(stderr_lines) or '\n'.join(stdout_lines)
                 downloads[tab_id]['status']     = 'error'
                 downloads[tab_id]['error_text'] = error_text
-                with open(os.path.join(DESKTOP, f'yt-dlp-error-{tab_id}.log'), 'w', encoding='utf-8') as f:
+                save_dir = config['save_dir']
+                with open(os.path.join(save_dir, f'yt-dlp-error-{tab_id}.log'), 'w', encoding='utf-8') as f:
                     f.write(error_text)
 
     except Exception as e:
+        save_dir = config['save_dir']
         with downloads_lock:
             downloads[tab_id]['status']     = 'error'
             downloads[tab_id]['error_text'] = str(e)
             downloads[tab_id]['proc']       = None
-        with open(os.path.join(DESKTOP, f'yt-dlp-error-{tab_id}.log'), 'w', encoding='utf-8') as f:
+        with open(os.path.join(save_dir, f'yt-dlp-error-{tab_id}.log'), 'w', encoding='utf-8') as f:
             f.write(str(e))
 
 @app.route('/download')
@@ -117,7 +122,7 @@ def download():
         if tab_id in downloads and downloads[tab_id]['status'] == 'downloading':
             return 'Already downloading', 429
         downloads[tab_id] = make_state()
-    out_tmpl = os.path.join(DESKTOP, '%(title)s.%(ext)s')
+    out_tmpl = os.path.join(config['save_dir'], '%(title)s.%(ext)s')
     cmd = ['yt-dlp', '-o', out_tmpl, '--no-colors', url]
     threading.Thread(target=run_download, args=(tab_id, cmd), daemon=True).start()
     return 'Download started!'
@@ -142,6 +147,24 @@ def cancel():
             s['proc']   = None
             return 'Cancelled'
     return 'Nothing to cancel', 400
+
+@app.route('/setdir', methods=['POST'])
+def setdir():
+    data = request.get_json()
+    path = data.get('path', '').strip()
+    if not path:
+        return 'No path provided', 400
+    if not os.path.isdir(path):
+        try:
+            os.makedirs(path, exist_ok=True)
+        except Exception as e:
+            return f'Invalid path: {e}', 400
+    config['save_dir'] = path
+    return 'OK'
+
+@app.route('/getdir')
+def getdir():
+    return jsonify({'path': config['save_dir']})
 
 @app.route('/progress')
 def progress():
