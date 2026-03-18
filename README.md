@@ -8,7 +8,10 @@ server files and extension files for the FF addon to connect to and download vid
 https://github.com/yt-dlp/yt-dlp
 
 -pip
+
 -python3.8 with flask
+
+`pip install Flask`
 
 **Set up:**
 
