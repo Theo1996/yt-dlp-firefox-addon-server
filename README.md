@@ -7,9 +7,8 @@ server files and extension files for the FF addon to connect to and download vid
 
 https://github.com/yt-dlp/yt-dlp
 
--pip
 
--python3.8 with flask
+-python3.8 with pip and flask
 
 `pip install Flask`
 
@@ -23,6 +22,8 @@ https://github.com/yt-dlp/yt-dlp
 
 5. start.pyw should detect your python location automatically
 
+Or just make it start automatically however you want.
+
    
 **Extra**
-The .zip is the "yt-dlp extension" folder
+The .zip is the "yt-dlp extension" folder,that can be renamed to `.xpi` and installed with  `user_pref("xpinstall.signatures.required", = 	false);` in `about:config`
