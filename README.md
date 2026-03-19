@@ -18,7 +18,7 @@ https://github.com/yt-dlp/yt-dlp
 
 2 Create a basic task with task scheduler to start server.pyw on startup.
 
-3. download this addon : [toadd]
+3. download this addon : https://addons.mozilla.org/en-US/firefox/addon/yt-dlp-dl/
 
 5. start.pyw should detect your python location automatically
 
