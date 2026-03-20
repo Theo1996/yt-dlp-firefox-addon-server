@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "YT Downloader",
-  "version": "0.1",
+  "version": "0.11",
   "permissions": ["tabs", "activeTab", "http://localhost/*", "http://127.0.0.1/*"],
   "browser_specific_settings": {
     "gecko": {

@@ -11,7 +11,7 @@ function getTabState(tabId) {
 }
 
 function setbadge(tabId, text, color) {
-  browser.browserAction.setBadgeText({ text, tabId });
+  browser.browserAction.setBadgeText({ text: text ? text + ' ' : '', tabId });
   browser.browserAction.setBadgeBackgroundColor({ color, tabId });
 }
 
@@ -23,6 +23,63 @@ function setPopup(tabId, page) {
   browser.browserAction.setPopup({ popup: page, tabId });
 }
 
+function isPlaylist(url) {
+  try {
+    const u = new URL(url);
+    return u.searchParams.has('v') && u.searchParams.has('list');
+  } catch { return false; }
+}
+
+function videoOnlyUrl(url) {
+  try {
+    const u = new URL(url);
+    const v = u.searchParams.get('v');
+    return `https://www.youtube.com/watch?v=${v}`;
+  } catch { return url; }
+}
+
+async function startDownload(tabId, url) {
+  const ts = getTabState(tabId);
+  ts.url   = url;
+
+  setTooltip(tabId, `YT-DLP Downloader\n─────────────────\nContacting server...`);
+
+  try {
+    const params = new URLSearchParams({ url, audio: false, tab_id: tabId });
+    const res    = await fetch(`${HOST}:${PORT}/download?${params}`);
+
+    if (res.ok) {
+      ts.polling = true;
+      setbadge(tabId, '...', '#4caf50');
+      setTooltip(tabId,
+        `YT-DLP Downloader\n` +
+        `─────────────────\n` +
+        `Status:  Starting...\n` +
+        `URL: ${url}`
+      );
+      setPopup(tabId, `popup.html?tab_id=${tabId}`);
+      poll(tabId);
+    } else {
+      const errText = await res.text();
+      setbadge(tabId, 'ERR', '#ff4444');
+      setTooltip(tabId,
+        `YT-DLP Downloader\n` +
+        `─────────────────\n` +
+        `Server error: ${errText}`
+      );
+    }
+  } catch {
+    setbadge(tabId, 'OFF', '#888888');
+    setTooltip(tabId,
+      `YT-DLP Downloader\n` +
+      `─────────────────\n` +
+      `Status:  Server offline\n` +
+      `Run server.py to start the bridge\n` +
+      `Expected at: 127.0.0.1:${PORT}`
+    );
+  }
+}
+
 async function poll(tabId) {
   const ts = getTabState(tabId);
   if (!ts.polling) return;
@@ -32,23 +89,32 @@ async function poll(tabId) {
     const data = await res.json();
 
     if (data.status === 'downloading') {
-  const pct = Math.round(data.progress);
-  if (pct === 0) {
-    setbadge(tabId, '. . .', '#4caf50');
-  } else {
-    setbadge(tabId, `${pct}%`, '#4caf50');
-  }
-  setTooltip(tabId,
-    `YT-DLP Downloader\n` +
-    `─────────────────\n` +
-    `Status:    Downloading\n` +
-    `Progress:  ${data.progress.toFixed(1)}%\n` +
-    `Speed:     ${data.speed || 'calculating...'}\n` +
-    `ETA:       ${data.eta || 'calculating...'}\n` +
-    `File:      ${data.filename || 'unknown'}\n` +
-    `─────────────────\n` +
-    `Click icon to open monitor / cancel`
-  );
+      const pct        = Math.round(data.progress);
+      const isPlaylist = data.playlist_total > 0;
+
+      if (isPlaylist) {
+        const showPlaylist = Math.floor(Date.now() / 2000) % 2 === 0;
+        if (showPlaylist) {
+          setbadge(tabId, `${data.playlist_cur}/${data.playlist_total}`, '#4caf50');
+        } else {
+          setbadge(tabId, pct === 0 ? '...' : `${pct}%`, '#4caf50');
+        }
+      } else {
+        setbadge(tabId, pct === 0 ? '...' : `${pct}%`, '#4caf50');
+      }
+
+      setTooltip(tabId,
+        `YT-DLP Downloader\n` +
+        `─────────────────\n` +
+        `Status:    Downloading\n` +
+        (isPlaylist ? `Playlist:  ${data.playlist_cur} of ${data.playlist_total}\n` : '') +
+        `Progress:  ${data.progress.toFixed(1)}%\n` +
+        `Speed:     ${data.speed || 'calculating...'}\n` +
+        `ETA:       ${data.eta || 'calculating...'}\n` +
+        `File:      ${data.filename || 'unknown'}\n` +
+        `─────────────────\n` +
+        `Click icon to open monitor / cancel`
+      );
 
     } else if (data.status === 'done') {
       setbadge(tabId, 'OK', '#4caf50');
@@ -108,7 +174,7 @@ async function poll(tabId) {
       setPopup(tabId, '');
       ts.polling = false;
       setbadge(tabId, '', '#888888');
-      setTooltip(tabId, 'YT-DLP Downloader\n─────────────────\nClick on a YouTube video to download it');
+      setTooltip(tabId, 'YT-DLP Downloader\n─────────────────\nClick on a page to download media');
       return;
     }
   } catch {
@@ -123,56 +189,72 @@ async function poll(tabId) {
   setTimeout(() => poll(tabId), 1000);
 }
 
+async function updatePopupForTab(tabId, url) {
+  try {
+    const res  = await fetch(`${HOST}:${PORT}/progress?tab_id=${tabId}`);
+    const data = await res.json();
+    if (!['downloading', 'error'].includes(data.status)) {
+      if (isPlaylist(url)) {
+        const encoded = encodeURIComponent(url);
+        setPopup(tabId, `choice.html?tab_id=${tabId}&url=${encoded}`);
+      } else {
+        setPopup(tabId, '');
+      }
+    }
+  } catch {
+    if (isPlaylist(url)) {
+      const encoded = encodeURIComponent(url);
+      setPopup(tabId, `choice.html?tab_id=${tabId}&url=${encoded}`);
+    } else {
+      setPopup(tabId, '');
+    }
+  }
+}
+
 browser.browserAction.onClicked.addListener(async (tab) => {
   const tabId = tab.id;
   const url   = tab.url || '';
   const ts    = getTabState(tabId);
-  ts.url      = url;
 
-  // onClicked only fires when popup is '' (i.e. not downloading)
-  // so this is always a "start new download" action
-
-  // Reset any previous popup/state
-  setPopup(tabId, '');
-  ts.polling = false;
-
-  setTooltip(tabId, `YT-DLP Downloader\n─────────────────\nContacting server...`);
+  if (!url) {
+    setbadge(tabId, '?', '#888888');
+    setTooltip(tabId, `YT-DLP Downloader\n─────────────────\nNo URL found on this tab`);
+    return;
+  }
 
   try {
-    const params = new URLSearchParams({ url, audio: false, tab_id: tabId });
-    const res    = await fetch(`${HOST}:${PORT}/download?${params}`);
+    const checkRes  = await fetch(`${HOST}:${PORT}/progress?tab_id=${tabId}`);
+    const checkData = await checkRes.json();
 
-    if (res.ok) {
-      ts.polling = true;
-      setbadge(tabId, '...', '#4caf50');
-      setTooltip(tabId,
-        `YT-DLP Downloader\n` +
-        `─────────────────\n` +
-        `Status:  Starting...\n` +
-        `URL: ${url}`
-      );
-      // Set popup so next click opens the monitor
+    if (checkData.status === 'downloading') {
+      const pct = Math.round(checkData.progress);
+      setbadge(tabId, `${pct}%`, '#4caf50');
       setPopup(tabId, `popup.html?tab_id=${tabId}`);
-      poll(tabId);
-    } else {
-      const errText = await res.text();
-      setbadge(tabId, 'ERR', '#ff4444');
-      setTooltip(tabId,
-        `YT-DLP Downloader\n` +
-        `─────────────────\n` +
-        `Server error: ${errText}`
-      );
+      if (!ts.polling) {
+        ts.polling = true;
+        poll(tabId);
+      }
+      return;
     }
+
+    if (['done', 'error', 'exists', 'cancelled'].includes(checkData.status)) {
+      ts.polling = false;
+      setPopup(tabId, '');
+    }
+
   } catch {
     setbadge(tabId, 'OFF', '#888888');
     setTooltip(tabId,
       `YT-DLP Downloader\n` +
       `─────────────────\n` +
       `Status:  Server offline\n` +
-      `Run server.py to start the bridge\n` +
-      `Expected at: 127.0.0.1:${PORT}`
+      `Run server.py to start the bridge`
     );
+    return;
   }
+
+  // Non-playlist — start immediately
+  await startDownload(tabId, url);
 });
 
 browser.runtime.onMessage.addListener((msg) => {
@@ -180,8 +262,9 @@ browser.runtime.onMessage.addListener((msg) => {
     const tabId = msg.tabId;
     setPopup(tabId, '');
     setbadge(tabId, '', '#888888');
-    setTooltip(tabId, 'YT-DLP Downloader\n─────────────────\nClick on a YouTube video to download it');
+    setTooltip(tabId, 'YT-DLP Downloader\n─────────────────\nClick on a page to download media');
   }
+
   if (msg.type === 'CANCEL') {
     const tabId = msg.tabId;
     fetch(`${HOST}:${PORT}/cancel?tab_id=${tabId}`)
@@ -193,9 +276,14 @@ browser.runtime.onMessage.addListener((msg) => {
       })
       .catch(() => {});
   }
+
+  if (msg.type === 'START_DOWNLOAD') {
+    const { tabId, url } = msg;
+    setPopup(tabId, '');
+    startDownload(tabId, url);
+  }
 });
 
-// When user switches to a tab, check if it has an active download and resume polling
 browser.tabs.onActivated.addListener(async ({ tabId }) => {
   try {
     const res  = await fetch(`${HOST}:${PORT}/progress?tab_id=${tabId}`);
@@ -227,10 +315,20 @@ browser.tabs.onActivated.addListener(async ({ tabId }) => {
       setbadge(tabId, 'ERR', '#ff4444');
       setPopup(tabId, `error.html?tab_id=${tabId}`);
 
-    } else if (data.status === 'idle') {
+    } else {
       ts.polling = false;
       setbadge(tabId, '', '#888888');
-      setPopup(tabId, '');
+      const tab = await browser.tabs.get(tabId);
+      await updatePopupForTab(tabId, tab.url || '');
     }
   } catch {}
+});
+
+browser.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.url) {
+    const ts = getTabState(tabId);
+    if (!ts.polling) {
+      await updatePopupForTab(tabId, changeInfo.url);
+    }
+  }
 });

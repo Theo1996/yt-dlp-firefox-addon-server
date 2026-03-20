@@ -3,44 +3,43 @@ const HOST   = 'http://127.0.0.1';
 const params = new URLSearchParams(window.location.search);
 const tabId  = parseInt(params.get('tab_id')) || 0;
 
-const log         = document.getElementById('log');
-const pill        = document.getElementById('status-pill');
-const bar         = document.getElementById('progress-bar');
-const statPct     = document.getElementById('stat-pct');
-const statSpeed   = document.getElementById('stat-speed');
-const statEta     = document.getElementById('stat-eta');
-const statFile    = document.getElementById('stat-file');
-const footerMsg   = document.getElementById('footer-msg');
-const cancelBtn   = document.getElementById('cancel-btn');
-const settingsBtn = document.getElementById('settings-btn');
-const mainView    = document.getElementById('main-view');
+const log           = document.getElementById('log');
+const pill          = document.getElementById('status-pill');
+const bar           = document.getElementById('progress-bar');
+const statPct       = document.getElementById('stat-pct');
+const statSpeed     = document.getElementById('stat-speed');
+const statEta       = document.getElementById('stat-eta');
+const statFile      = document.getElementById('stat-file');
+const footerMsg     = document.getElementById('footer-msg');
+const cancelBtn     = document.getElementById('cancel-btn');
+const settingsBtn   = document.getElementById('settings-btn');
+const mainView      = document.getElementById('main-view');
 const settingsPanel = document.getElementById('settings-panel');
-const dirInput    = document.getElementById('dir-input');
-const dirStatus   = document.getElementById('dir-status');
-const saveDirBtn  = document.getElementById('save-dir-btn');
+const dirInput      = document.getElementById('dir-input');
+const dirStatus     = document.getElementById('dir-status');
+const saveDirBtn    = document.getElementById('save-dir-btn');
 
-let since         = 0;
-let autoScroll    = true;
-let done          = false;
-let lastLineCount = 0;
+let since           = 0;
+let autoScroll      = true;
+let done            = false;
+let lastLineCount   = 0;
 let showingSettings = false;
 
 // --- Settings toggle ---
 settingsBtn.addEventListener('click', () => {
   showingSettings = !showingSettings;
   if (showingSettings) {
-    mainView.style.display    = 'none';
+    mainView.style.display = 'none';
     settingsPanel.classList.add('visible');
-    settingsBtn.textContent   = '✕';
-    // Load current dir from server
+    settingsBtn.textContent = '✕';
     fetch(`${HOST}:${PORT}/getdir`)
       .then(r => r.json())
       .then(d => { dirInput.value = d.path; })
       .catch(() => {});
   } else {
-    mainView.style.display    = 'flex';
+    mainView.style.display = 'flex';
     settingsPanel.classList.remove('visible');
-    settingsBtn.textContent   = '⚙';
+    settingsBtn.textContent = '⚙';
   }
 });
 
