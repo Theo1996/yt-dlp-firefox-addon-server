@@ -3,7 +3,6 @@ import subprocess, threading, re, os
 
 app = Flask(__name__)
 
-# Mutable save directory
 config = {
     'save_dir': os.path.join(os.path.expanduser('~'), 'Desktop')
 }
@@ -13,14 +12,16 @@ downloads_lock = threading.Lock()
 
 def make_state():
     return {
-        'status':     'idle',
-        'progress':   0.0,
-        'speed':      '',
-        'eta':        '',
-        'filename':   '',
-        'error_text': '',
-        'output':     [],
-        'proc':       None
+        'status':         'idle',
+        'progress':       0.0,
+        'speed':          '',
+        'eta':            '',
+        'filename':       '',
+        'error_text':     '',
+        'output':         [],
+        'proc':           None,
+        'playlist_cur':   0,
+        'playlist_total': 0,
     }
 
 def run_download(tab_id, cmd):
@@ -60,19 +61,28 @@ def run_download(tab_id, cmd):
                     downloads[tab_id]['output'].append(line)
                     if len(downloads[tab_id]['output']) > 200:
                         downloads[tab_id]['output'].pop(0)
+
                 if 'has already been downloaded' in line:
-                    downloads[tab_id]['status'] = 'exists'
+                    if downloads[tab_id]['playlist_total'] == 0:
+                        downloads[tab_id]['status'] = 'exists'
                     f = re.search(r'\[download\] (.+) has already been downloaded', line)
                     if f:
                         downloads[tab_id]['filename'] = os.path.basename(f.group(1).strip())
+
                 m = re.search(r'(\d+\.?\d*)%.*?at\s+([\d\.\w/]+)\s+ETA\s+([\d:]+)', line)
                 if m:
                     downloads[tab_id]['progress'] = float(m.group(1))
                     downloads[tab_id]['speed']    = m.group(2)
                     downloads[tab_id]['eta']      = m.group(3)
+
                 f = re.search(r'\[download\] Destination: (.+)', line)
                 if f:
                     downloads[tab_id]['filename'] = os.path.basename(f.group(1).strip())
+
+                pl = re.search(r'Downloading item (\d+) of (\d+)', line)
+                if pl:
+                    downloads[tab_id]['playlist_cur']   = int(pl.group(1))
+                    downloads[tab_id]['playlist_total'] = int(pl.group(2))
 
         def read_stderr():
             for line in proc.stderr:
@@ -99,17 +109,15 @@ def run_download(tab_id, cmd):
                 error_text = '\n'.join(stderr_lines) or '\n'.join(stdout_lines)
                 downloads[tab_id]['status']     = 'error'
                 downloads[tab_id]['error_text'] = error_text
-                save_dir = config['save_dir']
-                with open(os.path.join(save_dir, f'yt-dlp-error-{tab_id}.log'), 'w', encoding='utf-8') as f:
+                with open(os.path.join(config['save_dir'], f'yt-dlp-error-{tab_id}.log'), 'w', encoding='utf-8') as f:
                     f.write(error_text)
 
     except Exception as e:
-        save_dir = config['save_dir']
         with downloads_lock:
             downloads[tab_id]['status']     = 'error'
             downloads[tab_id]['error_text'] = str(e)
             downloads[tab_id]['proc']       = None
-        with open(os.path.join(save_dir, f'yt-dlp-error-{tab_id}.log'), 'w', encoding='utf-8') as f:
+        with open(os.path.join(config['save_dir'], f'yt-dlp-error-{tab_id}.log'), 'w', encoding='utf-8') as f:
             f.write(str(e))
 
 @app.route('/download')
@@ -172,11 +180,13 @@ def progress():
     with downloads_lock:
         s = downloads.get(tab_id, make_state())
     return jsonify({
-        'status':   s['status'],
-        'progress': s['progress'],
-        'speed':    s['speed'],
-        'eta':      s['eta'],
-        'filename': s['filename']
+        'status':         s['status'],
+        'progress':       s['progress'],
+        'speed':          s['speed'],
+        'eta':            s['eta'],
+        'filename':       s['filename'],
+        'playlist_cur':   s['playlist_cur'],
+        'playlist_total': s['playlist_total'],
     })
 
 @app.route('/output')
@@ -187,7 +197,7 @@ def output():
         s     = downloads.get(tab_id, make_state())
         lines = s['output'][since:]
         total = len(s['output'])
-    return jsonify({ 'lines': lines, 'total': total, 'status': s['status'] })
+    return jsonify({'lines': lines, 'total': total, 'status': s['status']})
 
 @app.route('/error')
 def error():
