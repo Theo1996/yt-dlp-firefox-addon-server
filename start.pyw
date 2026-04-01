@@ -1,4 +1,4 @@
-import subprocess, os, sys, winreg
+import subprocess, os, sys, winreg, ctypes
 
 def find_python():
     # 1. Check PATH first
@@ -10,8 +10,7 @@ def find_python():
                 creationflags=subprocess.CREATE_NO_WINDOW
             )
             if result.returncode == 0:
-                version = result.stdout.strip() or result.stderr.strip()
-                # Extract major.minor
+                version = (result.stdout or result.stderr).strip()
                 parts = version.replace('Python ', '').split('.')
                 major, minor = int(parts[0]), int(parts[1])
                 if (major, minor) >= (3, 8):
@@ -19,7 +18,7 @@ def find_python():
         except Exception:
             pass
 
-    # 2. Check Windows Registry for installed Python versions
+    # 2. Registry
     candidates = []
     for root in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
         for base in (r'SOFTWARE\Python\PythonCore', r'SOFTWARE\WOW6432Node\Python\PythonCore'):
@@ -34,7 +33,7 @@ def find_python():
                         if (major, minor) >= (3, 8):
                             install_key = winreg.OpenKey(key, ver_name + r'\InstallPath')
                             path = winreg.QueryValue(install_key, '')
-                            exe  = os.path.join(path.strip(), 'python.exe')
+                            exe = os.path.join(path.strip(), 'python.exe')
                             if os.path.exists(exe):
                                 candidates.append(((major, minor), exe))
                         i += 1
@@ -42,82 +41,66 @@ def find_python():
                         break
             except OSError:
                 pass
-
     if candidates:
-        # Pick the newest version
         candidates.sort(reverse=True)
         return candidates[0][1]
 
-    # 3. Common install locations as fallback
+    # 3. Common locations
     common = [
-        r'C:\Python3{}\python.exe'.format(minor) for minor in range(13, 7, -1)
+        rf'C:\Python3{minor}\python.exe' for minor in range(13, 7, -1)
     ] + [
-        r'C:\Program Files\Python3{}\python.exe'.format(minor) for minor in range(13, 7, -1)
+        rf'C:\Program Files\Python3{minor}\python.exe' for minor in range(13, 7, -1)
     ] + [
-        os.path.expanduser(r'~\AppData\Local\Programs\Python\Python3{}\python.exe'.format(minor))
+        os.path.expanduser(rf'~\AppData\Local\Programs\Python\Python3{minor}\python.exe')
         for minor in range(13, 7, -1)
     ]
     for path in common:
         if os.path.exists(path):
             return path
-
     return None
 
-# Kill anything already running on port 9876
+# === Kill old server on port 9876 ===
 try:
-    result = subprocess.run(
-        ['netstat', '-ano'],
-        capture_output=True, text=True,
-        creationflags=subprocess.CREATE_NO_WINDOW
-    )
+    result = subprocess.run(['netstat', '-ano'], capture_output=True, text=True,
+                            creationflags=subprocess.CREATE_NO_WINDOW)
     for line in result.stdout.splitlines():
         if ':9876' in line and 'LISTENING' in line:
             pid = line.strip().split()[-1]
-            subprocess.run(
-                ['taskkill', '/F', '/PID', pid],
-                creationflags=subprocess.CREATE_NO_WINDOW
-            )
+            subprocess.run(['taskkill', '/F', '/PID', pid],
+                           creationflags=subprocess.CREATE_NO_WINDOW)
 except Exception:
     pass
 
-# Find Python
+# === Find Python ===
 python = find_python()
-
 if not python:
-    import ctypes
     ctypes.windll.user32.MessageBoxW(
-        0,
-        'Could not find Python 3.8 or newer.\nPlease install Python from python.org and try again.',
-        'YT-DLP Server',
-        0x10  # MB_ICONERROR
-    )
+        0, 'Could not find Python 3.8 or newer.\nPlease install from python.org',
+        'YT-DLP Server', 0x10)
     sys.exit(1)
 
-# Start the server
-server_py = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'server.py')
+# === Locate server.py (same folder as this launcher) ===
+launcher_dir = os.path.dirname(os.path.abspath(__file__))
+server_py = os.path.join(launcher_dir, 'server.py')
 
-subprocess.Popen(
-    [python, server_py],
-    creationflags=subprocess.CREATE_NO_WINDOW
-)
-#```
+if not os.path.exists(server_py):
+    ctypes.windll.user32.MessageBoxW(
+        0, f'Could not find server.py\nExpected here:\n{server_py}',
+        'YT-DLP Server - Error', 0x10)
+    sys.exit(1)
 
-#---
+# === Launch server (still hidden) ===
+try:
+    subprocess.Popen(
+        [python, server_py],
+        creationflags=subprocess.CREATE_NO_WINDOW,
+        # Optional: you can capture output if you want to debug later
+        # stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+except Exception as e:
+    ctypes.windll.user32.MessageBoxW(
+        0, f'Failed to start server:\n{str(e)}', 'YT-DLP Server - Error', 0x10)
+    sys.exit(1)
 
-## How the error flow works
-#```
-#yt-dlp fails
-#     
-#      server writes yt-dlp-error.log to Desktop
-#      state.error_text saved in memory
-#      badge -> ERR (red, stays forever)
-#      popup set to error.html
-#
-#User clicks ERR badge
-#     
-#     error.html opens -> fetches /error -> shows filtered yt-dlp output
-#              
-#         [Dismiss] clicked
-#              
-#               badge cleared
-#               popup unset (next click starts a new download)
+# Optional: small success message so you know it worked
+# ctypes.windll.user32.MessageBoxW(0, 'YT-DLP Server started successfully!', 'YT-DLP Server', 0x40)
