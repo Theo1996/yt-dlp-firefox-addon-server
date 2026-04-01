@@ -14,7 +14,7 @@ https://github.com/yt-dlp/yt-dlp
 
 **Set up:**
 
-1 Put this wherever you like
+1 Put `server.py` and `start.pyw` in one folder wherever you like.
 
 2 Create a basic task with task scheduler to start server.pyw on startup.
 
