@@ -19,6 +19,24 @@ const dirInput      = document.getElementById('dir-input');
 const dirStatus     = document.getElementById('dir-status');
 const saveDirBtn    = document.getElementById('save-dir-btn');
 
+const updateBanner = document.getElementById('update-banner');
+const updateCheck  = document.getElementById('update-check');
+
+browser.runtime.sendMessage({ type: 'GET_UPDATE_INFO' }).then(u => {
+  if (!u) return;
+  const a = document.createElement('a');
+  a.textContent = 'Download';
+  a.addEventListener('click', e => { e.preventDefault(); browser.tabs.create({ url: u.url }); });
+  updateBanner.append(`New server v${u.remote} available (installed: ${u.local}). `, a);
+  updateBanner.style.display = 'block';
+}).catch(() => {});
+
+browser.storage.local.get('updateCheck').then(r => { updateCheck.checked = r.updateCheck !== false; });
+updateCheck.addEventListener('change', async () => {
+  await browser.storage.local.set({ updateCheck: updateCheck.checked });
+  browser.runtime.sendMessage({ type: 'CHECK_UPDATE_NOW' }).catch(() => {});
+});
+
 let since           = 0;
 let autoScroll      = true;
 let done            = false;
@@ -144,8 +162,15 @@ async function fetchOutput() {
         footerMsg.textContent = '⊘ Already downloaded';
         footerMsg.style.color = '#ff9800';
       } else {
-        footerMsg.textContent = '✗ Error — check the ERR badge for details';
+        footerMsg.textContent = '✗ Error — click toolbar icon for details';
         footerMsg.style.color = '#ff4444';
+        browser.runtime.sendMessage({ type: 'GET_ERROR_INFO', tabId }).then(r => {
+          const f = r && r.info && r.info.failures && r.info.failures[0];
+          if (f) {
+            footerMsg.textContent = '✗ ' + (f.id ? f.id + ': ' : '') + f.reason;
+            footerMsg.title = (f.url || '') + '\n' + f.reason;
+          }
+        }).catch(() => {});
       }
       return;
     }

@@ -78,6 +78,16 @@
       transition: width 0.4s ease;
     }
 
+    #update-banner {
+      display: none;
+      padding: 6px 14px;
+      background: #2a2010;
+      color: #ff9800;
+      font-size: 11px;
+      flex-shrink: 0;
+    }
+    #update-banner a { color: #ffb74d; text-decoration: underline; cursor: pointer; }
+    .chk { font-size: 11px; color: #999; display: flex; align-items: center; gap: 6px; cursor: pointer; }
     #log {
       flex: 1;
       overflow-y: auto;
@@ -183,6 +193,7 @@
       <span><span class="stat-label">File</span><span class="stat-value" id="stat-file">—</span></span>
     </div>
     <div id="progress-wrap"><div id="progress-bar"></div></div>
+    <div id="update-banner"></div>
     <div id="log"></div>
     <div id="footer">
       <span id="footer-msg">live output</span>
@@ -198,6 +209,7 @@
     </div>
     <div id="dir-status"></div>
     <button id="save-dir-btn">Save</button>
+    <label class="chk"><input type="checkbox" id="update-check"> Check GitHub for new server versions</label>
   </div>
 
   <script src="popup.js"></script>
