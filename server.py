@@ -223,6 +223,7 @@ def run_download(tab_id, cmd):
             text=True,
             encoding='utf-8',
             errors='replace',
+            env={**os.environ, 'PYTHONIOENCODING': 'utf-8', 'PYTHONUTF8': '1'},
             **kwargs
         )
 
@@ -316,7 +317,7 @@ def download():
         downloads[tab_id] = make_state()
         downloads[tab_id]['url'] = url
     out_tmpl = os.path.join(config['save_dir'], '%(title)s.%(ext)s')
-    cmd = ['yt-dlp', '-o', out_tmpl, '--no-colors', url]
+    cmd = ['yt-dlp', '--encoding', 'utf-8', '-o', out_tmpl, '--no-colors', url]
     with downloads_lock:
         downloads[tab_id]['cmd'] = subprocess.list2cmdline(cmd)
     threading.Thread(target=run_download, args=(tab_id, cmd), daemon=True).start()
